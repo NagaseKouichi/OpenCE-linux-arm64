@@ -40,7 +40,11 @@ copy is written to maps.partial (emptied first of what an earlier attempt
 left) and given the name maps only when every file is complete.
 */
 
+#ifdef HALO_LINUX_ARM64_HOST
+#include "host_startup.h"
+#else
 #include "platform.h"
+#endif
 #include "xiso.h"
 
 #if !defined(HALO_ANDROID) && !defined(HALO_WEB)

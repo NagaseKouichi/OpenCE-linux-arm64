@@ -854,6 +854,15 @@ static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void config_path(char *path, size_t size)
 {
+#ifdef HALO_LINUX_ARM64
+	/* LP64 startup selected executable-local config before discovering data. */
+	const char *selected = getenv("HALO_CONFIG_PATH");
+	if (selected && *selected)
+	{
+		snprintf(path, size, "%s", selected);
+		return;
+	}
+#endif
 #if defined(HALO_ANDROID) || defined(HALO_WEB)
 	/* the data folder, which the app names (port/android/host/host_main.c;
 	on the web, port/web/src/web_main.c) */

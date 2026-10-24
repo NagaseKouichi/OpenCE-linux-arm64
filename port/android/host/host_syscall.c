@@ -33,7 +33,9 @@ The exceptions are
 #include <time.h>
 #include <unistd.h>
 
+#ifndef HALO_LINUX_ARM64_HOST
 #include <android/log.h>
+#endif
 
 /* the guest's structures */
 struct guest_timespec
@@ -78,6 +80,7 @@ static long result_of(long value)
 
 /* ---------- standard output and error */
 
+#ifndef HALO_LINUX_ARM64_HOST
 struct log_stream
 {
 	char line[1024];
@@ -86,9 +89,21 @@ struct log_stream
 
 static struct log_stream log_streams[2];
 static pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 static void log_bytes(int fd, const char *bytes, size_t size)
 {
+	#ifdef HALO_LINUX_ARM64_HOST
+	/* Preserve Linux stdout/stderr, including partial lines and redirection. */
+	while (size)
+	{
+		ssize_t count = write(fd, bytes, size);
+		if (count < 0 && errno == EINTR) continue;
+		if (count <= 0) break;
+		bytes += count;
+		size -= (size_t)count;
+	}
+	#else
 	struct log_stream *stream = &log_streams[fd == 2];
 	size_t index;
 
@@ -108,6 +123,7 @@ static void log_bytes(int fd, const char *bytes, size_t size)
 		stream->line[stream->length++] = c;
 	}
 	pthread_mutex_unlock(&log_lock);
+	#endif
 }
 
 static long guest_writev(int fd, uint64_t vector, int count, int64_t offset, int positional)

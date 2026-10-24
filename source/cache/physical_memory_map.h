@@ -12,7 +12,8 @@ header included in hcex build.
 
 /* port: the tag cache's size, which the loader checks a map's tag data and
 structure bsps against (cache_files.c) */
-#define TAG_CACHE_SIZE 0x1600000
+/* Retail Xbox BSPs end at 0x81A23000, beyond the beta 22 MB cache. */
+#define TAG_CACHE_SIZE 0x1700000
 
 /* ---------- macros */
 

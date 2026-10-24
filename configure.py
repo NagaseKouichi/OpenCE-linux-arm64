@@ -14,6 +14,7 @@ from tools import ninja_syntax
 from tools.android_build import android_configure_inputs, generate_android_build
 from tools.linux_build import check_profile_options, generate_linux_build, linux_configure_inputs
 from tools.web_build import generate_web_build, web_configure_inputs
+from tools.linux_arm64_build import generate_linux_arm64_build, linux_arm64_configure_inputs
 from tools.windows_build import generate_windows_build, windows_configure_inputs
 
 
@@ -27,6 +28,17 @@ parser.add_argument(
     "--linux-cc",
     metavar="BINARY",
     help="compiler for the native Linux build, `ninja linux` (default: clang)",
+)
+parser.add_argument("--linux-arm64", action="store_true",
+                    help="enable native Linux ARM64 ILP32 guest/LP64 host (fetch musl/SDL3)")
+parser.add_argument("--linux-arm64-guest-cc", help="Clang with arm64_32 support (default: clang)")
+parser.add_argument("--linux-arm64-gl-include", help="directory containing GLES2/GLES3/KHR headers")
+parser.add_argument("--linux-arm64-ar", help="LLVM archiver (default: llvm-ar)")
+parser.add_argument("--linux-arm64-ld", help="LLVM ELF linker (default: ld.lld)")
+parser.add_argument(
+    "--linux-arm64-cc",
+    metavar="BINARY",
+    help="compiler for the Linux AArch64 host (default: aarch64-linux-gnu-gcc)",
 )
 parser.add_argument(
     "--compiler-launcher",
@@ -136,6 +148,12 @@ except ValueError as error:
 sln = SimpleNamespace(
     build_dir=Path("build"),
     linux_cc=args.linux_cc,
+    linux_arm64=args.linux_arm64,
+    linux_arm64_cc=args.linux_arm64_cc,
+    linux_arm64_guest_cc=args.linux_arm64_guest_cc,
+    linux_arm64_gl_include=args.linux_arm64_gl_include,
+    linux_arm64_ar=args.linux_arm64_ar,
+    linux_arm64_ld=args.linux_arm64_ld,
     compiler_launcher=args.compiler_launcher,
     port_release=args.release,
     port_profile=args.profile,
@@ -170,6 +188,7 @@ n.variable("python", f'"{sys.executable}"')
 n.newline()
 
 generate_linux_build(n, sln)
+generate_linux_arm64_build(n, sln)
 generate_android_build(n, sln)
 generate_windows_build(n, sln)
 generate_web_build(n, sln)
@@ -188,6 +207,7 @@ n.build(
         configure_script,
         Path("tools/ninja_syntax.py"),
         *linux_configure_inputs(),
+        *linux_arm64_configure_inputs(),
         *android_configure_inputs(),
         *windows_configure_inputs(),
         *web_configure_inputs(),

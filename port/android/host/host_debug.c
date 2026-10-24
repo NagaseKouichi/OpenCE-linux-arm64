@@ -11,6 +11,9 @@ symbolize against build/android/halo_guest.elf (llvm-symbolizer
 
 #include "host.h"
 
+#ifdef HALO_LINUX_ARM64_HOST
+#include <stdio.h>
+#endif
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>

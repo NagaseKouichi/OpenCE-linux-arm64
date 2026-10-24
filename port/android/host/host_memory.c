@@ -35,7 +35,9 @@ instead (host_watch_hash.c).
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#ifndef HALO_LINUX_ARM64_HOST
 #include <sys/system_properties.h>
+#endif
 #include <ucontext.h>
 #include <unistd.h>
 
@@ -153,6 +155,7 @@ static void finding(int priority, const char *format, ...)
 		snprintf(findings + used, sizeof(findings) - used, "%s\n", line);
 }
 
+#ifndef HALO_LINUX_ARM64_HOST
 struct range_usage
 {
 	uint64_t pages_in_use;
@@ -426,6 +429,8 @@ static int reclaim_art_overlap(uint64_t address, uint64_t size)
 	return reclaimed;
 }
 
+#endif /* !HALO_LINUX_ARM64_HOST */
+
 /* reclaim_art: the fixed ranges the guest was built for may take ART's
 idle large object space (reclaim_art_overlap); the pools, placed in free
 gaps, never do: a mapping in the way there is one ART just made, maybe live */
@@ -443,6 +448,7 @@ static int reserve(uint64_t address, uint64_t size, int reclaim_art)
 		munmap(result, size);
 		errno = EEXIST;
 	}
+	#ifndef HALO_LINUX_ARM64_HOST
 	if (reclaim_art && errno == EEXIST)
 	{
 		int error = errno;
@@ -464,6 +470,9 @@ static int reserve(uint64_t address, uint64_t size, int reclaim_art)
 			errno = EEXIST;
 		}
 	}
+	#else
+	(void)reclaim_art; /* Linux must never unmap another owner's mappings. */
+	#endif
 	return -1;
 }
 
@@ -473,15 +482,21 @@ void host_memory_report_low_mappings(FILE *file)
 {
 	FILE *maps = fopen("/proc/self/maps", "r");
 	char line[512];
+	#ifndef HALO_LINUX_ARM64_HOST
 	char model[PROP_VALUE_MAX] = "", heap[PROP_VALUE_MAX] = "", release[PROP_VALUE_MAX] = "";
 
 	__system_property_get("ro.product.model", model);
 	__system_property_get("dalvik.vm.heapsize", heap);
 	__system_property_get("ro.build.version.release", release);
+	#endif
 	if (file)
 	{
+		#ifndef HALO_LINUX_ARM64_HOST
 		fprintf(file, "device: %s, Android %s, Java heap %s\n", model[0] ? model : "unknown",
 			release[0] ? release : "unknown", heap[0] ? heap : "unknown");
+		#else
+		fprintf(file, "Linux ARM64 host\n");
+		#endif
 		fprintf(file, "why:\n%s\nmappings below 4 GB:\n", findings[0] ? findings : "(no reason recorded)\n");
 	}
 	if (!maps)
@@ -585,6 +600,7 @@ Either may be followed by -nopagemap, for devices that refuse
 /proc/self/pagemap (the check then falls back to mincore and smaps), and
 by -swapped, which pushes the stand-in's objects (its bottom pages, and the
 window's page if busy) out to swap, as they can be on those devices. */
+#ifndef HALO_LINUX_ARM64_HOST
 #ifndef MADV_PAGEOUT
 #define MADV_PAGEOUT 21
 #endif
@@ -629,15 +645,27 @@ static void simulate_art_overlap(void)
 		mapping_swap_kb(SIMULATED_SPACE_BASE));
 }
 
+#endif /* !HALO_LINUX_ARM64_HOST */
+
 void host_memory_reserve_early(void)
 {
+	#ifndef HALO_LINUX_ARM64_HOST
 	simulate_art_overlap();
+	#endif
 	if (reserve_fixed("at start-up (JNI_OnLoad)") == 0)
 		host_logf(HOST_LOG_INFO, "reserved the Xbox memory window and the image range at start-up");
 }
 
 int host_memory_initialize(uint32_t base, uint32_t size)
 {
+	#ifdef HALO_LINUX_ARM64_HOST
+	if (sysconf(_SC_PAGESIZE) != PAGE)
+	{
+		host_logf(HOST_LOG_ERROR, "the guest requires 4096-byte pages (kernel page size %ld)", sysconf(_SC_PAGESIZE));
+		errno = ENOTSUP;
+		return -1;
+	}
+	#endif
 	if (base != HALO_GUEST_IMAGE_BASE || size > HALO_GUEST_IMAGE_RESERVE)
 	{
 		host_logf(HOST_LOG_ERROR, "the guest image (%08x, %u bytes) does not fit its range", base, size);
@@ -879,6 +907,7 @@ static struct sigaction previous_segv, previous_bus, previous_ill;
 
 static void report_crash(int signal_number, siginfo_t *information, void *context)
 {
+	#if defined(__aarch64__) || !defined(HALO_LINUX_ARM64_HOST)
 	ucontext_t *ucontext = context;
 	const struct sigcontext *registers = (const struct sigcontext *)&ucontext->uc_mcontext;
 	uint64_t pc = registers->pc, lr = registers->regs[30];
@@ -912,6 +941,10 @@ static void report_crash(int signal_number, siginfo_t *information, void *contex
 			fp = frame[0];
 		}
 	}
+	#else
+	(void)context;
+	host_logf(HOST_LOG_ERROR, "signal %d at address %p", signal_number, information->si_addr);
+	#endif
 }
 
 static void chain(struct sigaction *previous, int signal_number, siginfo_t *information, void *context)

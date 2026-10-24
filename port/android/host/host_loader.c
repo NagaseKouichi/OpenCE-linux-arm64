@@ -38,6 +38,15 @@ int host_load_image(const void *file, size_t size)
 		host_logf(HOST_LOG_ERROR, "the guest image is not an AArch64 executable");
 		return -1;
 	}
+#ifdef HALO_LINUX_ARM64_HOST
+	if (elf->e_ident[EI_DATA] != ELFDATA2LSB || elf->e_ident[EI_VERSION] != EV_CURRENT ||
+		elf->e_phentsize != sizeof(Elf64_Phdr) || !elf->e_phnum ||
+		elf->e_phoff > size || (uint64_t)elf->e_phnum * sizeof(Elf64_Phdr) > size - elf->e_phoff)
+	{
+		host_logf(HOST_LOG_ERROR, "invalid guest ELF program headers");
+		return -1;
+	}
+#endif
 	segments = (const Elf64_Phdr *)((const char *)file + elf->e_phoff);
 	for (index = 0; index < elf->e_phnum; index++)
 	{

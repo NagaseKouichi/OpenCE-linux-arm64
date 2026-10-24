@@ -1,0 +1,14 @@
+host_log
+host_exit
+host_get_tp
+host_set_tp
+host_sdl_init
+host_sdl_gl_set_attribute
+host_sdl_create_window
+host_sdl_gl_create_context
+host_sdl_gl_make_current
+host_gl_get_string
+host_sdl_open_audio_stream
+host_sdl_resume_audio_stream_device
+host_sdl_put_audio_stream_data
+host_sdl_ticks

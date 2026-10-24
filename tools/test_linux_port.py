@@ -339,6 +339,12 @@ def test_p2p_signatures_and_listings(tmp_path):
 
     if not shutil.which("clang") or not shutil.which("ninja") or not Path("build.ninja").is_file():
         pytest.skip("needs clang, ninja and a configured build")
+    # A cross-toolchain container need not contain native i686 GCC runtimes.
+    probe = subprocess.run(["clang", "--target=i686-linux-gnu", "-m32", "-x", "c", "-",
+                            "-o", str(tmp_path / "multilib-probe")],
+                           input="int main(void) { return 0; }", capture_output=True, text=True)
+    if probe.returncode:
+        pytest.skip("needs a working native i686 link toolchain: " + probe.stderr[-500:])
     command = subprocess.run(["ninja", "-t", "commands", "build/linux/obj/port/linux/src/p2p_crypto.o"],
                              capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1]
     words = shlex.split(command)

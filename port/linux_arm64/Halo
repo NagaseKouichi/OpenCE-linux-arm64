@@ -1,0 +1,18 @@
+#!/bin/sh
+# Run the Linux AArch64 LP64 host and its ILP32 game image together.
+set -eu
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ ! -x "$HERE/halo-host" ]; then
+    printf '%s\n' "Missing executable: $HERE/halo-host (build ninja linux_arm64 first)." >&2
+    exit 1
+fi
+if [ ! -r "$HERE/halo_guest.elf" ]; then
+    printf '%s\n' "Missing guest image: $HERE/halo_guest.elf (build ninja linux_arm64 first)." >&2
+    exit 1
+fi
+# Optional user-local libraries; never overwrite the system loader or libc.
+if [ -d "$HERE/lib" ]; then
+    LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export LD_LIBRARY_PATH
+fi
+exec "$HERE/halo-host" "$@"

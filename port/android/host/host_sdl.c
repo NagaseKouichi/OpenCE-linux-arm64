@@ -14,6 +14,18 @@ so the audio callback is handed to a thread that has one.
 #include "host.h"
 
 #include <SDL3/SDL.h>
+#ifdef HALO_LINUX_ARM64_HOST
+#include <SDL3/SDL_main.h>
+
+void host_linux_sdl_main_ready(void)
+{
+	/* This is the first SDL call in the process. SDL_SetMainReady assigns
+	 * SDL main-thread identity here, on the low-stack guest/video thread. */
+	SDL_SetMainReady();
+	if (!SDL_Init(0)) host_fatal("cannot initialize SDL: %s", SDL_GetError());
+	if (!SDL_IsMainThread()) host_fatal("the guest video thread is not SDL's main thread");
+}
+#endif
 #include <pthread.h>
 #include <string.h>
 
@@ -501,7 +513,13 @@ void host_sdl_get_clipboard_text(char *buffer, uint32_t size)
 
 int host_sdl_show_toast(const char *message, int duration, int gravity, int x, int y)
 {
+	#ifdef HALO_LINUX_ARM64_HOST
+	(void)duration; (void)gravity; (void)x; (void)y;
+	host_logf(HOST_LOG_INFO, "%s", message);
+	return 1;
+	#else
 	return SDL_ShowAndroidToast(message, duration, gravity, x, y) ? 1 : 0;
+	#endif
 }
 
 /* ---------- a message for the player (a host of another network version) */

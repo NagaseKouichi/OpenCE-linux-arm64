@@ -716,7 +716,7 @@ long tag_loaded(
 void cache_files_enable_writes(
 	void)
 {
-	XPhysicalProtect((void *)0x803A6000, 0x01600000, PAGE_READWRITE);
+	XPhysicalProtect((void *)0x803A6000, TAG_CACHE_SIZE, PAGE_READWRITE);
 
 	return;
 }
@@ -724,7 +724,7 @@ void cache_files_enable_writes(
 void cache_files_disable_writes(
 	void)
 {
-	XPhysicalProtect((void *)0x803A6000, 0x01600000, PAGE_READONLY);
+	XPhysicalProtect((void *)0x803A6000, TAG_CACHE_SIZE, PAGE_READONLY);
 	XPhysicalProtect(
 		cache_file_globals.tag_header->vertex_buffers,
 		cache_file_globals.tag_header->vertex_buffer_count * 12,
@@ -1243,7 +1243,7 @@ long scenario_tags_load(
 		tag_cache_base_address = physical_memory_get_tag_cache_base_address();
 		if (cache_file_header_verify(&cache_file_globals.header, scenario_name, TRUE))
 		{
-			csmemset(tag_cache_base_address, 0xCD, 0x01600000);
+			csmemset(tag_cache_base_address, 0xCD, TAG_CACHE_SIZE);
 			cache_file_read(
 				NONE,
 				cache_file_globals.header.tag_data_offset,
@@ -1392,7 +1392,7 @@ boolean scenario_structure_bsp_load(
 		csmemset(
 			tag_cache_base_address + cache_file_globals.header.tag_data_size,
 			0xCD,
-			0x01600000 - cache_file_globals.header.tag_data_size);
+			TAG_CACHE_SIZE - cache_file_globals.header.tag_data_size);
 	}
 	{
 		boolean read_complete;
